@@ -1,6 +1,13 @@
 package rmi;
 
+import java.io.BufferedInputStream;
+import java.io.IOException;
+import java.io.ObjectInputStream;
+import java.io.ObjectOutputStream;
+import java.lang.reflect.Method;
 import java.net.*;
+import java.util.Arrays;
+import java.util.List;
 
 /** RMI skeleton
 
@@ -26,6 +33,11 @@ import java.net.*;
 */
 public class Skeleton<T>
 {
+	ListeningThread plistener;
+	Class<T> cl;
+	T server;
+	InetSocketAddress addr;
+	
     /** Creates a <code>Skeleton</code> with no initial server address. The
         address will be determined by the system when <code>start</code> is
         called. Equivalent to using <code>Skeleton(null)</code>.
@@ -47,7 +59,32 @@ public class Skeleton<T>
      */
     public Skeleton(Class<T> c, T server)
     {
-        throw new UnsupportedOperationException("not implemented");
+    	//null pointer exception
+    	if(c == null || server == null) {
+    		throw new NullPointerException();
+    	}
+    	
+    	//checking if is a interface  
+   	 	Method[] mthds = c.getDeclaredMethods(); //returns an array of Method objects
+   	 
+        for (int i=0;i<mthds.length;i++) {  //looping the array
+       	 
+            Class[] exceptions = mthds[i].getExceptionTypes(); //types of exceptions declared to be thrown
+            
+            //creating a List out of the array
+            List<Class> exceptionList = Arrays.asList(exceptions);
+            
+            
+            if (!(exceptionList.contains(RMIException.class)) || !(c.isInterface())) {
+                throw new Error("Object c is not a remote interface");
+            }
+        }
+   	
+         
+    	//creating the skeleton
+    	this.cl = c;
+    	this.server = server;
+        
     }
 
     /** Creates a <code>Skeleton</code> with the given initial server address.
@@ -70,7 +107,32 @@ public class Skeleton<T>
      */
     public Skeleton(Class<T> c, T server, InetSocketAddress address)
     {
-        throw new UnsupportedOperationException("not implemented");
+    	//null pointer exception
+    	if(c == null || server == null) {
+    		throw new NullPointerException();
+    	}
+    	
+    	//checking if is a interface  
+    	 Method[] mthds = c.getDeclaredMethods(); //returns an array of Method objects
+    	 
+         for (int i=0;i<mthds.length;i++) {  //looping the array
+        	 
+             Class[] exceptions = mthds[i].getExceptionTypes(); //types of exceptions declared to be thrown
+             
+             //creating a List out of the array
+             List<Class> exceptionList = Arrays.asList(exceptions);
+             
+             
+             if (!(exceptionList.contains(RMIException.class)) || !(c.isInterface())) {
+                 throw new Error("Object c is not a remote interface");
+             }
+         }
+    	
+    	//creating the skeleton
+    	this.cl = c;
+    	this.server = server;
+    	this.addr = address;
+    	
     }
 
     /** Called when the listening thread exits.
@@ -141,7 +203,13 @@ public class Skeleton<T>
      */
     public synchronized void start() throws RMIException
     {
-        throw new UnsupportedOperationException("not implemented");
+    	 try {
+    		 plistener = new ListeningThread();
+             plistener.start();
+             
+         } catch (Exception e) {
+             throw new RMIException("Listening socket cannot be created/bound or listening thread cannot be created or the server has already been started and has not since stopped ");
+         }
     }
 
     /** Stops the skeleton server, if it is already running.
@@ -155,6 +223,93 @@ public class Skeleton<T>
      */
     public synchronized void stop()
     {
-        throw new UnsupportedOperationException("not implemented");
+    	//Stopping if the listener thread is alive
+        if(plistener != null) {
+        	if(plistener.isAlive()) {
+        		plistener.isRunning = false;
+        	}
+        	
+        }
+    }
+    
+    public class ListeningThread extends Thread{
+    	private Socket socket = null;
+    	private ServerSocket serverSocket= null;
+    	private boolean isRunning;
+    
+    	
+    	public ListeningThread() {
+    	   isRunning = true;
+    	}
+    	
+    	public void run()
+    	{
+    		while(isRunning) {
+    			try {
+        			serverSocket = new ServerSocket(addr.getPort());
+        			System.out.println("Server started");
+        			
+        			socket = serverSocket.accept();
+        			RespondingThread rt = new RespondingThread(socket);
+        			rt.start();
+        			System.out.println("Client accepted");
+        			
+        		}catch(Exception e) {
+        			
+        		}
+    		}
+    	}
+    }
+    
+    public class RespondingThread extends Thread{
+    	private Socket clientSocket= null;
+    	private ObjectInputStream input;
+        private ObjectOutputStream output;
+    	
+    	public RespondingThread(Socket socket) {
+    		this.clientSocket = socket;
+    	}
+    	
+    	
+    	public void run()
+    	{
+    		if(!clientSocket.isClosed()) {
+    			
+    			try {
+					
+					output = new ObjectOutputStream(clientSocket.getOutputStream());
+					output.flush();
+					
+					input =  new ObjectInputStream(clientSocket.getInputStream());
+					System.out.println(input.readUTF());
+					
+					
+				} catch (IOException e) {
+					// TODO Auto-generated catch block
+					e.printStackTrace();
+				}
+    			
+    			//cleaning up 
+    			//closing any opened streams
+    			try {
+                    if (output != null) {
+                        output.close();
+                    }
+                    if (input != null) {
+                        input.close();
+                    }
+                    if (!clientSocket.isClosed()) {
+                        clientSocket.close();
+                    }
+                } catch (IOException e) {
+					// TODO Auto-generated catch block
+					e.printStackTrace();
+				}
+    		}
+    		
+    	}
+    	
     }
 }
+
+

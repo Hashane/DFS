@@ -10,11 +10,12 @@ public class RemoteImpl extends UnicastRemoteObject implements RemoteInterface{
 
 	protected RemoteImpl() throws RemoteException, RMIException, UnknownHostException {
 		super();
-		 RemoteImpl object = new  RemoteImpl();
-		 Skeleton<RemoteInterface> skeleton = new Skeleton <RemoteInterface>(RemoteInterface.class,object);
-		 skeleton.start();
 		 
-		 RemoteInterface stub = Stub.create(RemoteInterface.class, skeleton);
+		RemoteImpl object = new  RemoteImpl();
+		Skeleton<RemoteInterface> skeleton = new Skeleton <RemoteInterface>(RemoteInterface.class,object);
+		skeleton.start();
+		 
+		RemoteInterface stub = Stub.create(RemoteInterface.class, skeleton);
 	}
 
 	@Override
