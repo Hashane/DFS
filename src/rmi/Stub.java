@@ -1,6 +1,14 @@
 package rmi;
 
+import java.io.IOException;
+import java.io.ObjectInputStream;
+import java.io.ObjectOutputStream;
+import java.lang.reflect.InvocationHandler;
+import java.lang.reflect.Method;
 import java.net.*;
+import java.util.Arrays;
+import java.util.List;
+import java.lang.reflect.Proxy;
 
 /** RMI stub factory.
 
@@ -46,9 +54,33 @@ public abstract class Stub
                       this interface cannot be dynamically created.
      */
     public static <T> T create(Class<T> c, Skeleton<T> skeleton)
-        throws UnknownHostException
+    		throws UnknownHostException
     {
-        throw new UnsupportedOperationException("not implemented");
+    	 // NullException
+        if (c == null || skeleton == null) {
+        	throw new NullPointerException("Null arguments");
+        }
+        
+        //checking if is a interface  
+        Method[] mthds = c.getDeclaredMethods(); //returns an array of Method objects
+   	 
+        for (int i=0;i<mthds.length;i++) {  //looping the array
+       	 
+            Class[] exceptions = mthds[i].getExceptionTypes(); //types of exceptions declared to be thrown
+            
+            //creating a List out of the array
+            List<Class> exceptionList = Arrays.asList(exceptions);
+            
+            
+            if (!(exceptionList.contains(RMIException.class)) || !(c.isInterface())) {
+                throw new Error("Object c is not a remote interface");
+            }
+        }
+        
+        
+        T response = (T) Proxy.newProxyInstance(c.getClassLoader(), new Class<?> [] { c }, new DynamicProxy<T>(c,skeleton));
+        
+		return response;
     }
 
     /** Creates a stub, given a skeleton with an assigned address and a hostname
@@ -84,7 +116,31 @@ public abstract class Stub
     public static <T> T create(Class<T> c, Skeleton<T> skeleton,
                                String hostname)
     {
-        throw new UnsupportedOperationException("not implemented");
+    	// NullException
+        if (c == null || skeleton == null || hostname == null) {
+        	throw new NullPointerException("Null arguments");
+        }
+        
+        //checking if is a interface  
+   	 	Method[] mthds = c.getDeclaredMethods(); //returns an array of Method objects
+   	 
+        for (int i=0;i<mthds.length;i++) {  //looping the array
+       	 
+            Class[] exceptions = mthds[i].getExceptionTypes(); //types of exceptions declared to be thrown
+            
+            //creating a List out of the array
+            List<Class> exceptionList = Arrays.asList(exceptions);
+            
+            
+            if (!(exceptionList.contains(RMIException.class)) || !(c.isInterface())) {
+                throw new Error("Object c is not a remote interface");
+            }
+        }
+        
+       
+        T response = (T) Proxy.newProxyInstance(c.getClassLoader(), new Class<?> [] { c }, new DynamicProxy<T>(c, new InetSocketAddress(hostname,skeleton.addr.getPort())));
+        
+		return response;
     }
 
     /** Creates a stub, given the address of a remote server.
@@ -106,6 +162,87 @@ public abstract class Stub
      */
     public static <T> T create(Class<T> c, InetSocketAddress address)
     {
-        throw new UnsupportedOperationException("not implemented");
+    	// NullException
+        if (c == null || address == null ) {
+            throw new NullPointerException("Null arguments");
+        }
+        
+        //checking if is a interface  
+   	 	Method[] mthds = c.getDeclaredMethods(); //returns an array of Method objects
+   	 
+        for (int i=0;i<mthds.length;i++) {  //looping the array
+       	 
+            Class[] exceptions = mthds[i].getExceptionTypes(); //types of exceptions declared to be thrown
+            
+            //creating a List out of the array
+            List<Class> exceptionList = Arrays.asList(exceptions);
+            
+            
+            if (!(exceptionList.contains(RMIException.class)) || !(c.isInterface())) {
+                throw new Error("Object c is not a remote interface");
+            }
+        }
+        
+        T response = (T) Proxy.newProxyInstance(c.getClassLoader(), new Class<?> [] { c }, new DynamicProxy<T>(c,address));
+        
+        
+		return response;
     }
+    
+  
+}
+
+class DynamicProxy<T> implements InvocationHandler{
+	InetAddress address;
+    int port;
+    Class<T> c;
+	
+	
+	//Constructors 
+	public DynamicProxy(Class<T> c,Skeleton<T> skeleton) {
+		this.address = skeleton.addr.getAddress();
+        this.port = skeleton.addr.getPort();
+        this.c = c;
+	}
+	
+	public DynamicProxy(Class<T> c,InetSocketAddress socketAddress) {
+		this.address = socketAddress.getAddress();
+		this.port = socketAddress.getPort();
+        this.c = c;
+	}
+
+	@Override
+	public Object invoke(Object proxy, Method method, Object[] args) throws Throwable {
+		
+	 Socket socket = null;
+ 
+     ObjectOutputStream output = null;
+     ObjectInputStream	input = null;
+     
+    	
+     //proxy(Stub Object) connects to the corresponding skeleton at the server side in order to invoke methods and receive response
+     
+     socket = new Socket(address,port);
+     output = new ObjectOutputStream(socket.getOutputStream());
+     output.flush();
+     
+     //invoking methods
+     output.writeObject(method);
+    
+     
+     //receiving response 
+     input = new ObjectInputStream(socket.getInputStream());
+     Object response =  input.read();	
+     
+     try {
+	     input.close();
+	     output.close();
+	     socket.close();
+     }catch(IOException e) {
+    	 e.printStackTrace();
+     }
+		
+	 return response;
+	}
+	
 }

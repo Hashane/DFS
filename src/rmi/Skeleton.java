@@ -1,6 +1,5 @@
 package rmi;
 
-import java.io.BufferedInputStream;
 import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
@@ -81,7 +80,7 @@ public class Skeleton<T>
         }
    	
          
-    	//creating the skeleton
+        //instantiating variables
     	this.cl = c;
     	this.server = server;
         
@@ -128,7 +127,7 @@ public class Skeleton<T>
              }
          }
     	
-    	//creating the skeleton
+    	//instantiating variables
     	this.cl = c;
     	this.server = server;
     	this.addr = address;
@@ -205,7 +204,7 @@ public class Skeleton<T>
     {
     	 try {
     		 plistener = new ListeningThread();
-             plistener.start();
+    		 plistener.start();
              
          } catch (Exception e) {
              throw new RMIException("Listening socket cannot be created/bound or listening thread cannot be created or the server has already been started and has not since stopped ");
@@ -250,8 +249,8 @@ public class Skeleton<T>
         			System.out.println("Server started");
         			
         			socket = serverSocket.accept();
-        			RespondingThread rt = new RespondingThread(socket);
-        			rt.start();
+        			ClientThread serviceT = new ClientThread(socket);
+        			serviceT.start();
         			System.out.println("Client accepted");
         			
         		}catch(Exception e) {
@@ -261,12 +260,12 @@ public class Skeleton<T>
     	}
     }
     
-    public class RespondingThread extends Thread{
+    public class ClientThread extends Thread{
     	private Socket clientSocket= null;
     	private ObjectInputStream input;
         private ObjectOutputStream output;
     	
-    	public RespondingThread(Socket socket) {
+    	public ClientThread(Socket socket) {
     		this.clientSocket = socket;
     	}
     	
@@ -289,8 +288,7 @@ public class Skeleton<T>
 					e.printStackTrace();
 				}
     			
-    			//cleaning up 
-    			//closing any opened streams
+    			//Clean-up 
     			try {
                     if (output != null) {
                         output.close();
