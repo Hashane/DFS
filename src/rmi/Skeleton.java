@@ -63,24 +63,32 @@ public class Skeleton<T>
     		throw new NullPointerException();
     	}
     	
-    	//checking if is a interface  
-   	 	Method[] mthds = c.getDeclaredMethods(); //returns an array of Method objects
-   	 
-        for (int i=0;i<mthds.length;i++) {  //looping the array
-       	 
-            Class[] exceptions = mthds[i].getExceptionTypes(); //types of exceptions declared to be thrown
-            
-            //creating a List out of the array
-            List<Class> exceptionList = Arrays.asList(exceptions);
-            
-            
-            if (!(exceptionList.contains(RMIException.class)) || !(c.isInterface())) {
-                throw new Error("Object c is not a remote interface");
-            }
-        }
+    	//Ensuring that a Skeleton cannot be constructed from a class rather than an interface.
+    	if (!(c.isInterface())) {
+            throw new Error("Object c is not a remote interface");
+     	}
+ 
+    	//Ensuring that a Skeleton cannot be constructed from a non-remote interface.
+    	//Remote interfaces do throw RemoteExceptions
+    	//Therefore for can make use of the exceptions declared to be thrown in order to determine if Skeleton is constructed from a non-remote interface or not.
+    	 Method[] methods = c.getDeclaredMethods(); //returns an array of Method objects
+    	 
+         for (int i=0;i<methods.length;i++) {  //looping the array
+        	 
+             Class[] exceptions = methods[i].getExceptionTypes(); //types of exceptions declared to be thrown
+             
+             //creating a List out of the array
+             List<Class> exceptionList = Arrays.asList(exceptions);
+             
+             
+             if (!(exceptionList.contains(RMIException.class)) || !(c.isInterface())) {
+                 throw new Error("Object c is not a remote interface");
+             }
+         }
    	
          
         //instantiating variables
+        this.addr = new InetSocketAddress(7000);
     	this.cl = c;
     	this.server = server;
         
@@ -111,12 +119,20 @@ public class Skeleton<T>
     		throw new NullPointerException();
     	}
     	
-    	//checking if is a interface  
-    	 Method[] mthds = c.getDeclaredMethods(); //returns an array of Method objects
+    	
+    	//Ensuring that a Skeleton cannot be constructed from a class rather than an interface.
+    	if (!(c.isInterface())) {
+            throw new Error("Object c is not a remote interface");
+     	}
+    	
+    	//Ensuring that a Skeleton cannot be constructed from a non-remote interface.
+    	//Remote interfaces do throw RemoteExceptions
+    	//Therefore for can make use of the exceptions declared to be thrown in order to determine if Skeleton is constructed from a non-remote interface or not.
+    	 Method[] methods = c.getDeclaredMethods(); //returns an array of Method objects
     	 
-         for (int i=0;i<mthds.length;i++) {  //looping the array
+         for (int i=0;i<methods.length;i++) {  //looping the array
         	 
-             Class[] exceptions = mthds[i].getExceptionTypes(); //types of exceptions declared to be thrown
+             Class[] exceptions = methods[i].getExceptionTypes(); //types of exceptions declared to be thrown
              
              //creating a List out of the array
              List<Class> exceptionList = Arrays.asList(exceptions);
@@ -202,13 +218,22 @@ public class Skeleton<T>
      */
     public synchronized void start() throws RMIException
     {
-    	 try {
-    		 plistener = new ListeningThread();
-    		 plistener.start();
-             
-         } catch (Exception e) {
-             throw new RMIException("Listening socket cannot be created/bound or listening thread cannot be created or the server has already been started and has not since stopped ");
-         }
+    	
+    	//only if plistener thread is not alive we start the new thread
+    	
+    	if ((plistener != null) && plistener.isAlive()) {
+            throw new RMIException("Already running!");
+        } else {
+        	
+        	try {
+       		 plistener = new ListeningThread();
+       		 plistener.start();
+                
+            } catch (Exception e) {
+                throw new RMIException("Listening socket cannot be created/bound or listening thread cannot be created or the server has already been started and has not since stopped ");
+            }
+        }
+    	 
     }
 
     /** Stops the skeleton server, if it is already running.
@@ -272,38 +297,42 @@ public class Skeleton<T>
     	
     	public void run()
     	{
-    		if(!clientSocket.isClosed()) {
+    		try {
+    			if(!clientSocket.isClosed()) {
     			
-    			try {
+    			
 					
 					output = new ObjectOutputStream(clientSocket.getOutputStream());
 					output.flush();
 					
 					input =  new ObjectInputStream(clientSocket.getInputStream());
-					System.out.println(input.readUTF());
+					//System.out.println(input.readUTF());
 					
-					
-				} catch (IOException e) {
-					// TODO Auto-generated catch block
-					e.printStackTrace();
-				}
+    			}
+			} catch (IOException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			}
     			
-    			//Clean-up 
-    			try {
-                    if (output != null) {
-                        output.close();
-                    }
-                    if (input != null) {
-                        input.close();
-                    }
-                    if (!clientSocket.isClosed()) {
-                        clientSocket.close();
-                    }
-                } catch (IOException e) {
-					// TODO Auto-generated catch block
-					e.printStackTrace();
-				}
-    		}
+    		//Clean-up 
+    		try {
+                if (output != null) {
+                  output.close();
+                }
+                
+                if (input != null) {
+                	input.close();
+                }
+                
+                if (!clientSocket.isClosed()) {
+                    clientSocket.close();
+                }
+                
+            } catch (IOException e) {
+				// TODO Auto-generated catch block
+			    e.printStackTrace();
+		    }
+    	
     		
     	}
     	

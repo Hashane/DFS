@@ -138,7 +138,8 @@ public abstract class Stub
         }
         
        
-        T response = (T) Proxy.newProxyInstance(c.getClassLoader(), new Class<?> [] { c }, new DynamicProxy<T>(c, new InetSocketAddress(hostname,skeleton.addr.getPort())));
+        T response = (T) Proxy.newProxyInstance(c.getClassLoader(), new Class<?> [] { c }, new DynamicProxy<T>(c, new InetSocketAddress(hostname,skeleton.addr.getPort()) ));
+        
         
 		return response;
     }
